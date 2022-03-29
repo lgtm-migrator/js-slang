@@ -12,7 +12,6 @@ import {
   Error as ResultError,
   ExecutionMethod,
   Finished,
-  ModuleContext,
   ModuleState,
   Result,
   SourceError,
@@ -317,4 +316,4 @@ export function compile(
   }
 }
 
-export { createContext, Context, ModuleContext, ModuleState, Result, setBreakpointAtLine, assemble }
+export { createContext, Context, ModuleState, Result, setBreakpointAtLine, assemble }

@@ -18,7 +18,7 @@ import {
   Context,
   CustomBuiltIns,
   Environment,
-  ModuleContext,
+  ModuleState,
   NativeStorage,
   Value,
   Variant
@@ -152,7 +152,7 @@ export const createEmptyContext = <T>(
     executionMethod: 'auto',
     variant,
     moduleParams,
-    moduleContexts: new Map<string, ModuleContext>(),
+    moduleContexts: new Map<string, ModuleState>(),
     unTypecheckedCode: [],
     typeEnvironment: createTypeEnvironment(chapter),
     previousCode: []
