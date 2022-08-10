@@ -31,7 +31,7 @@ import { runWithProgram } from '../vm/svml-machine'
 import { determineExecutionMethod } from '.'
 import { toSourceError } from './errors'
 import { fullJSRunner } from './fullJSRunner'
-import { appendModulesToContext, determineVariant, resolvedErrorPromise } from './utils'
+import { determineVariant, resolvedErrorPromise } from './utils'
 
 const DEFAULT_SOURCE_OPTIONS: IOptions = {
   scheduler: 'async',
@@ -102,6 +102,7 @@ function runSubstitution(
 }
 
 function runInterpreter(program: es.Program, context: Context, options: IOptions): Promise<Result> {
+  console.log('running using interpreter');
   let it = evaluate(program, context)
   let scheduler: Scheduler
   if (context.variant === 'non-det') {
@@ -135,7 +136,7 @@ async function runNative(
   let transpiled
   let sourceMapJson: RawSourceMap | undefined
   try {
-    appendModulesToContext(program, context)
+    // appendModulesToContext(program, context)
     switch (context.variant) {
       case 'gpu':
         transpileToGPU(program)

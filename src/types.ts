@@ -93,6 +93,23 @@ export interface NativeStorage {
    */
 }
 
+export class ModuleContexts {
+  constructor(
+    public readonly contexts: Map<string, any> = new Map(),
+  ) {
+    this.spawnedTabs = new Set<string>();
+  }
+
+  private readonly spawnedTabs: Set<string>;
+
+  public get moduleTabs() { return Array.from(this.spawnedTabs.values()); }
+
+  public spawnTab(name: string) {
+    console.log('spawn tab was called with', name);
+    this.spawnedTabs.add(name);
+  }
+}
+
 export interface Context<T = any> {
   /** The source version used */
   chapter: number
@@ -164,24 +181,12 @@ export interface Context<T = any> {
   /**
    * Storage container for module specific information and state
    */
-  moduleContexts: Map<string, ModuleContext>
+  moduleContexts: ModuleContexts;
 
   /**
    * Code previously executed in this context
    */
   previousCode: string[]
-}
-
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface ModuleState {}
-
-/**
- * Used to store state and contextual information for
- * each module
- */
-export type ModuleContext = {
-  tabs: any[]
-  state?: ModuleState | null
 }
 
 export interface BlockFrame {

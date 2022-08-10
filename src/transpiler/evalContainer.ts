@@ -1,12 +1,11 @@
-import { ModuleContext } from '..'
 import { MODULE_CONTEXTS_ID, MODULE_PARAMS_ID, NATIVE_STORAGE_ID } from '../constants'
-import { NativeStorage } from '../types'
+import type { ModuleContexts, NativeStorage } from '../types'
 
 type Evaler = (
   code: string,
   nativeStorage: NativeStorage,
   moduleParams: any,
-  moduleContexts: Map<string, ModuleContext>
+  moduleContexts: ModuleContexts,
 ) => any
 
 /*

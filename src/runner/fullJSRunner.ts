@@ -3,7 +3,7 @@ import { Options, parse } from 'acorn'
 import { generate } from 'astring'
 import * as es from 'estree'
 
-import { IOptions, ModuleContext, Result } from '..'
+import { IOptions, Result } from '..'
 import { NATIVE_STORAGE_ID } from '../constants'
 import { RuntimeSourceError } from '../errors/runtimeSourceError'
 import { FatalSyntaxError } from '../parser/parser'
@@ -14,11 +14,11 @@ import {
   prefixModule,
   transpile
 } from '../transpiler/transpiler'
-import { Context } from '../types'
+import type { Context, ModuleContexts } from '../types'
 import * as create from '../utils/astCreator'
 import { NativeStorage } from './../types'
 import { toSourceError } from './errors'
-import { appendModulesToContext, resolvedErrorPromise } from './utils'
+import { resolvedErrorPromise } from './utils'
 
 const FULL_JS_PARSER_OPTIONS: Options = {
   sourceType: 'module',
@@ -56,7 +56,7 @@ function fullJSEval(
   code: string,
   nativeStorage: NativeStorage,
   moduleParams: any,
-  moduleContexts: Map<string, ModuleContext>
+  moduleContexts: ModuleContexts,
 ): any {
   if (nativeStorage.evaller) {
     return nativeStorage.evaller(code)
@@ -101,7 +101,7 @@ export async function fullJSRunner(
   hoistImportDeclarations(program)
   let modulePrefix: string
   try {
-    appendModulesToContext(program, context)
+    // appendModulesToContext(program, context)
     modulePrefix = prefixModule(program)
   } catch (error) {
     context.errors.push(error instanceof RuntimeSourceError ? error : await toSourceError(error))

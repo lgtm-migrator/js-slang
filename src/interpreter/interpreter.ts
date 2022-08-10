@@ -6,7 +6,7 @@ import * as constants from '../constants'
 import { LazyBuiltIn } from '../createContext'
 import * as errors from '../errors/errors'
 import { RuntimeSourceError } from '../errors/runtimeSourceError'
-import { loadModuleBundle, loadModuleTabs } from '../modules/moduleLoader'
+import { loadModuleBundle } from '../modules/moduleLoader'
 import { checkEditorBreakpoints } from '../stdlib/inspector'
 import { Context, ContiguousArrayElements, Environment, Frame, Value } from '../types'
 import { conditionalExpression, literal, primitive } from '../utils/astCreator'
@@ -664,13 +664,6 @@ export const evaluators: { [nodeType: string]: Evaluator<es.Node> } = {
           local: spec.local.name
         }
       })
-      
-      if (!context.moduleContexts.has(moduleName)) {
-        context.moduleContexts.set(moduleName, {
-          state: null,
-          tabs: loadModuleTabs(moduleName, node)
-        });
-      }
 
       const functions = loadModuleBundle(moduleName, context, node)
       declareImports(context, node)

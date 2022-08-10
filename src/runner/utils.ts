@@ -2,7 +2,6 @@
 import { DebuggerStatement, Literal, Program } from 'estree'
 
 import { IOptions, Result } from '..'
-import { loadModuleTabs } from '../modules/moduleLoader'
 import { parseAt } from '../parser/parser'
 import { areBreakpointsSet } from '../stdlib/inspector'
 import { Context, Variant } from '../types'
@@ -67,29 +66,29 @@ export function determineExecutionMethod(
   return isNativeRunnable
 }
 
-/**
- * Add UI tabs needed for modules to program context
- *
- * @param program AST of program to be ran
- * @param context The context of the program
- */
-export function appendModulesToContext(program: Program, context: Context): void {
-  for (const node of program.body) {
-    if (node.type !== 'ImportDeclaration') break
-    const moduleName = (node.source.value as string).trim()
+// /**
+//  * Add UI tabs needed for modules to program context
+//  *
+//  * @param program AST of program to be ran
+//  * @param context The context of the program
+//  */
+// export function appendModulesToContext(program: Program, context: Context): void {
+//   for (const node of program.body) {
+//     if (node.type !== 'ImportDeclaration') break
+//     const moduleName = (node.source.value as string).trim()
 
-    // Load the module's tabs
-    if (!context.moduleContexts.has(moduleName)) {
-      const moduleContext = {
-        state: null,
-        tabs: loadModuleTabs(moduleName)
-      }
-      context.moduleContexts.set(moduleName, moduleContext)
-    } else {
-      context.moduleContexts.get(moduleName)!.tabs = loadModuleTabs(moduleName)
-    }
-  }
-}
+//     // Load the module's tabs
+//     if (!context.moduleContexts.contexts.has(moduleName)) {
+//       const moduleContext = {
+//         state: null,
+//         tabs: loadModuleTabs(moduleName)
+//       }
+//       context.moduleContexts.set(moduleName, moduleContext)
+//     } else {
+//       context.moduleContexts.get(moduleName)!.tabs = loadModuleTabs(moduleName)
+//     }
+//   }
+// }
 
 // AST Utils
 

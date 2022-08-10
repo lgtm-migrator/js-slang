@@ -12,8 +12,7 @@ import {
   Error as ResultError,
   ExecutionMethod,
   Finished,
-  ModuleContext,
-  ModuleState,
+  ModuleContexts,
   Result,
   SourceError,
   SVMProgram,
@@ -325,4 +324,4 @@ export function compile(
   }
 }
 
-export { createContext, Context, ModuleContext, ModuleState, Result, setBreakpointAtLine, assemble }
+export { createContext, Context, ModuleContexts, Result, setBreakpointAtLine, assemble }
