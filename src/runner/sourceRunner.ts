@@ -102,7 +102,7 @@ function runSubstitution(
 }
 
 function runInterpreter(program: es.Program, context: Context, options: IOptions): Promise<Result> {
-  console.log('running using interpreter');
+  console.log('running using interpreter')
   let it = evaluate(program, context)
   let scheduler: Scheduler
   if (context.variant === 'non-det') {

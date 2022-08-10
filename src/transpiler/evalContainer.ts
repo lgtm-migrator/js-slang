@@ -5,7 +5,7 @@ type Evaler = (
   code: string,
   nativeStorage: NativeStorage,
   moduleParams: any,
-  moduleContexts: ModuleContexts,
+  moduleContexts: ModuleContexts
 ) => any
 
 /*

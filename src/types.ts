@@ -94,19 +94,19 @@ export interface NativeStorage {
 }
 
 export class ModuleContexts {
-  constructor(
-    public readonly contexts: Map<string, any> = new Map(),
-  ) {
-    this.spawnedTabs = new Set<string>();
+  constructor(public readonly contexts: Map<string, any> = new Map()) {
+    this.spawnedTabs = new Set<string>()
   }
 
-  private readonly spawnedTabs: Set<string>;
+  private readonly spawnedTabs: Set<string>
 
-  public get moduleTabs() { return Array.from(this.spawnedTabs.values()); }
+  public get moduleTabs() {
+    return Array.from(this.spawnedTabs.values())
+  }
 
   public spawnTab(name: string) {
-    console.log('spawn tab was called with', name);
-    this.spawnedTabs.add(name);
+    console.log('spawn tab was called with', name)
+    this.spawnedTabs.add(name)
   }
 }
 
@@ -181,7 +181,7 @@ export interface Context<T = any> {
   /**
    * Storage container for module specific information and state
    */
-  moduleContexts: ModuleContexts;
+  moduleContexts: ModuleContexts
 
   /**
    * Code previously executed in this context

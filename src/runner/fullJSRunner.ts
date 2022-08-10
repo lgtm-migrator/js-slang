@@ -56,7 +56,7 @@ function fullJSEval(
   code: string,
   nativeStorage: NativeStorage,
   moduleParams: any,
-  moduleContexts: ModuleContexts,
+  moduleContexts: ModuleContexts
 ): any {
   if (nativeStorage.evaller) {
     return nativeStorage.evaller(code)
