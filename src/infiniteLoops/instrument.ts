@@ -1,7 +1,7 @@
 import { generate } from 'astring'
 import * as es from 'estree'
-import { Context } from '..'
 
+import { Context } from '..'
 import { processImportDeclarations } from '../transpiler/transpiler'
 import * as create from '../utils/astCreator'
 import { recursive, simple, WalkerCallback } from '../utils/walkers'

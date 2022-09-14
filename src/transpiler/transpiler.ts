@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { generate } from 'astring'
 import * as es from 'estree'
+import { partition } from 'lodash'
 import { RawSourceMap, SourceMapGenerator } from 'source-map'
 
 import { NATIVE_STORAGE_ID } from '../constants'
@@ -164,7 +165,7 @@ export function processImportDeclarations(
   return {
     prefix: prefix.join(''),
     importNodes: declNodes,
-    otherNodes,
+    otherNodes
   }
 }
 
@@ -174,16 +175,16 @@ export function processImportDeclarations(
  * a single statement
  */
 export function hoistImportDeclarations(program: es.Program) {
-  const importNodes = program.body.filter(
+  const [importNodes, otherNodes] = partition(program.body, 
     node => node.type === 'ImportDeclaration'
-  ) as es.ImportDeclaration[]
+  )
   const specifiers = new Map<
     string,
     (es.ImportSpecifier | es.ImportDefaultSpecifier | es.ImportNamespaceSpecifier)[]
   >()
   const baseNodes = new Map<string, es.ImportDeclaration>()
 
-  for (const node of importNodes) {
+  for (const node of importNodes as es.ImportDeclaration[]) {
     const moduleName = node.source.value as string
 
     if (!specifiers.has(moduleName)) {
@@ -203,7 +204,7 @@ export function hoistImportDeclarations(program: es.Program) {
     }
   }) as (es.ModuleDeclaration | es.Statement | es.Declaration)[]
 
-  program.body = newImports.concat(program.body.filter(node => node.type !== 'ImportDeclaration'))
+  program.body = newImports.concat(otherNodes);
 }
 
 export function getGloballyDeclaredIdentifiers(program: es.Program): string[] {
@@ -695,7 +696,7 @@ function transpileToSource(
   const {
     prefix: modulePrefix,
     importNodes,
-    otherNodes,
+    otherNodes
   } = processImportDeclarations(program, usedIdentifiers, context, true)
   program.body = (importNodes as es.Program['body']).concat(otherNodes)
 
@@ -727,7 +728,7 @@ function transpileToFullJS(program: es.Program, context: Context): TranspiledRes
   const {
     prefix: modulePrefix,
     importNodes,
-    otherNodes,
+    otherNodes
   } = processImportDeclarations(program, usedIdentifiers, context, true)
 
   const transpiledProgram: es.Program = create.program([
