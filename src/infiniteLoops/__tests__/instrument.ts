@@ -53,7 +53,7 @@ function runWithMock(main: string, codeHistory?: string[], builtins: Map<string,
     previous = restOfCode as Program[]
   }
   const [mockFunctions, mockState] = mockFunctionsAndState()
-  const instrumentedCode = instrument(previous, program as Program, builtins.keys())
+  const instrumentedCode = instrument(previous, program as Program, builtins.keys(), context)
   const { builtinsId, functionsId, stateId } = InfiniteLoopRuntimeObjectNames
   const sandboxedRun = new Function('code', functionsId, stateId, builtinsId, `return eval(code)`)
   sandboxedRun(instrumentedCode, mockFunctions, mockState, builtins)

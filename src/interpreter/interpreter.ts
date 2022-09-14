@@ -7,6 +7,7 @@ import { LazyBuiltIn } from '../createContext'
 import * as errors from '../errors/errors'
 import { RuntimeSourceError } from '../errors/runtimeSourceError'
 import { loadModuleBundle, loadModuleTabs } from '../modules/moduleLoader'
+import { ModuleFunctions } from '../modules/moduleTypes'
 import { checkEditorBreakpoints } from '../stdlib/inspector'
 import { Context, ContiguousArrayElements, Environment, Frame, Value, Variant } from '../types'
 import { conditionalExpression, literal, primitive } from '../utils/astCreator'
@@ -126,11 +127,11 @@ function declareVariables(context: Context, node: es.VariableDeclaration) {
   }
 }
 
-function declareImports(context: Context, node: es.ImportDeclaration) {
-  for (const declaration of node.specifiers) {
-    declareIdentifier(context, declaration.local.name, node)
-  }
-}
+// function declareImports(context: Context, node: es.ImportDeclaration) {
+//   for (const declaration of node.specifiers) {
+//     declareIdentifier(context, declaration.local.name, node)
+//   }
+// }
 
 function declareFunctionsAndVariables(context: Context, node: es.BlockStatement) {
   for (const statement of node.body) {
@@ -648,49 +649,6 @@ export const evaluators: { [nodeType: string]: Evaluator<es.Node> } = {
     popEnvironment(context)
     return result
   },
-
-  ImportDeclaration: function*(node: es.ImportDeclaration, context: Context) {
-    try {
-      const moduleName = node.source.value as string
-      const neededSymbols = node.specifiers.map(spec => {
-        if (spec.type !== 'ImportSpecifier') {
-          throw new Error(
-            `I expected only ImportSpecifiers to be allowed, but encountered ${spec.type}.`
-          )
-        }
-
-        return {
-          imported: spec.imported.name,
-          local: spec.local.name
-        }
-      })
-      
-      if (!(moduleName in context.moduleContexts)) {
-        context.moduleContexts[moduleName] = {
-          state: null,
-          tabs: loadModuleTabs(moduleName, node)
-        };
-      }
-
-      const functions = loadModuleBundle(moduleName, context, node)
-      declareImports(context, node)
-      for (const name of neededSymbols) {
-        defineVariable(context, name.local, functions[name.imported], true);
-      }
-
-      return undefined
-    } catch(error) {
-      return handleRuntimeError(context, error)
-    }
-  },
-
-  Program: function*(node: es.BlockStatement, context: Context) {
-    context.numberOfOuterEnvironments += 1
-    const environment = createBlockEnvironment(context, 'programEnvironment')
-    pushEnvironment(context, environment)
-    const result = yield *forceIt(yield* evaluateBlockStatement(context, node), context);
-    return result;
-  }
 }
 // tslint:enable:object-literal-shorthand
 
@@ -718,7 +676,85 @@ function getNonEmptyEnv(environment: Environment): Environment {
   }
 }
 
-export function* evaluate(node: es.Node, context: Context) {
+/**
+ * Convert the specifier into its actual value based on its type
+ */
+const specifierProcessor = {
+  ImportSpecifier: (funcs: ModuleFunctions, spec: es.ImportSpecifier) => funcs[spec.imported.name],
+  ImportDefaultSpecifier: (funcs: ModuleFunctions) => funcs['default'],
+  ImportNamespaceSpecifier: (funcs: ModuleFunctions) => funcs
+}
+
+export function* evalProgram(program: es.Program, context: Context, loadTabs: boolean) {
+  yield* visit(context, program)
+  const moduleBundles: {
+    [name: string]: ModuleFunctions
+  } = {}
+
+  const otherNodes: es.Program['body'] = []
+
+  for (const node of program.body) {
+    if (node.type === 'ImportDeclaration') {
+      yield* visit(context, node)
+      const moduleName = node.source.value as string
+
+      try {
+        if (!(moduleName in moduleBundles)) {
+          if (context.moduleContexts[moduleName]) {
+            if (!context.moduleContexts[moduleName].tabs && loadTabs) {
+              context.moduleContexts[moduleName].tabs = loadModuleTabs(moduleName, node)
+            }
+          } else {
+            context.moduleContexts[moduleName] = {
+              state: null,
+              tabs: loadTabs ? loadModuleTabs(moduleName, node) : null
+            }
+          }
+          moduleBundles[moduleName] = loadModuleBundle(moduleName, context, node)
+        }
+      } catch (error) {
+        handleRuntimeError(context, error)
+        // handleRuntimeError throws, so the return is unreachable
+        return undefined as never
+      }
+
+      node.specifiers.forEach(spec => {
+        declareIdentifier(context, spec.local.name, node)
+        defineVariable(
+          context,
+          spec.local.name,
+          specifierProcessor[spec.type](moduleBundles[moduleName], spec as any),
+          true
+        )
+      })
+      yield* leave(context) // Done visiting import node
+    } else {
+      otherNodes.push(node)
+    }
+  }
+
+  program.body = otherNodes
+
+  context.numberOfOuterEnvironments += 1
+  const environment = createBlockEnvironment(context, 'programEnvironment')
+  pushEnvironment(context, environment)
+  const result = yield* forceIt(
+    yield* evaluateBlockStatement(context, program as unknown as es.BlockStatement),
+    context
+  )
+  yield* leave(context) // Done visiting program
+
+  if (result instanceof Closure) {
+    Object.defineProperty(getNonEmptyEnv(currentEnvironment(context)).head, uniqueId(), {
+      value: result,
+      writable: false,
+      enumerable: true
+    })
+  }
+  return result
+}
+
+function* evaluate(node: es.Node, context: Context) {
   yield* visit(context, node)
   const result = yield* evaluators[node.type](node, context)
   yield* leave(context)

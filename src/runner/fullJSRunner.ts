@@ -7,16 +7,11 @@ import { IOptions, Result } from '..'
 import { NATIVE_STORAGE_ID } from '../constants'
 import { RuntimeSourceError } from '../errors/runtimeSourceError'
 import { FatalSyntaxError } from '../parser/parser'
-import {
-  evallerReplacer,
-  getBuiltins,
-  hoistImportDeclarations,
-  transpile
-} from '../transpiler/transpiler'
+import { evallerReplacer, getBuiltins, transpile } from '../transpiler/transpiler'
 import type { Context } from '../types'
 import * as create from '../utils/astCreator'
 import { toSourceError } from './errors'
-import { appendModulesToContext, resolvedErrorPromise } from './utils'
+import { resolvedErrorPromise } from './utils'
 
 const FULL_JS_PARSER_OPTIONS: Options = {
   sourceType: 'module',
@@ -91,15 +86,6 @@ export async function fullJSRunner(
     : [...getBuiltins(context.nativeStorage), ...preparePrelude(context)]
 
   // modules
-  hoistImportDeclarations(program)
-  try {
-    appendModulesToContext(program, context)
-    // modulePrefix = prefixModule(program)
-  } catch (error) {
-    context.errors.push(error instanceof RuntimeSourceError ? error : await toSourceError(error))
-    return resolvedErrorPromise
-  }
-
   const preEvalProgram: es.Program = create.program([
     ...preludeAndBuiltins,
     evallerReplacer(create.identifier(NATIVE_STORAGE_ID), new Set())
@@ -107,8 +93,15 @@ export async function fullJSRunner(
   const preEvalCode: string = generate(preEvalProgram) // + modulePrefix
   await fullJSEval(preEvalCode, context)
 
-  const { transpiled, sourceMapJson } = transpile(program, context)
-  // console.log(transpiled);
+  let transpiled, sourceMapJson
+  try {
+    ;({ transpiled, sourceMapJson } = transpile(program, context))
+    console.log(transpiled)
+  } catch (error) {
+    context.errors.push(error instanceof RuntimeSourceError ? error : await toSourceError(error))
+    return resolvedErrorPromise
+  }
+
   try {
     return Promise.resolve({
       status: 'finished',

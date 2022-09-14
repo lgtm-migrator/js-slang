@@ -9,7 +9,7 @@ import { TimeoutError } from '../errors/timeoutErrors'
 import { transpileToGPU } from '../gpu/gpu'
 import { isPotentialInfiniteLoop } from '../infiniteLoops/errors'
 import { testForInfiniteLoop } from '../infiniteLoops/runtime'
-import { evaluate } from '../interpreter/interpreter'
+import { evalProgram } from '../interpreter/interpreter'
 import { nonDetEvaluate } from '../interpreter/interpreter-non-det'
 import { transpileToLazy } from '../lazy/lazy'
 import { parse } from '../parser/parser'
@@ -31,7 +31,7 @@ import { runWithProgram } from '../vm/svml-machine'
 import { determineExecutionMethod } from '.'
 import { toSourceError } from './errors'
 import { fullJSRunner } from './fullJSRunner'
-import { appendModulesToContext, determineVariant, resolvedErrorPromise } from './utils'
+import { determineVariant, resolvedErrorPromise } from './utils'
 
 const DEFAULT_SOURCE_OPTIONS: IOptions = {
   scheduler: 'async',
@@ -102,7 +102,7 @@ function runSubstitution(
 }
 
 function runInterpreter(program: es.Program, context: Context, options: IOptions): Promise<Result> {
-  let it = evaluate(program, context)
+  let it = evalProgram(program, context, true)
   let scheduler: Scheduler
   if (context.variant === Variant.NON_DET) {
     it = nonDetEvaluate(program, context)
@@ -135,7 +135,6 @@ async function runNative(
   let transpiled
   let sourceMapJson: RawSourceMap | undefined
   try {
-    appendModulesToContext(program, context)
     switch (context.variant) {
       case Variant.GPU:
         transpileToGPU(program)
@@ -146,7 +145,7 @@ async function runNative(
     }
 
     ;({ transpiled, sourceMapJson } = transpile(program, context))
-    // console.log(transpiled);
+    console.log(transpiled);
     let value = await sandboxedEval(transpiled, context)
 
     if (context.variant === Variant.LAZY) {
@@ -224,13 +223,14 @@ export async function sourceRunner(
     return resolvedErrorPromise
   }
 
-  hoistImportDeclarations(program)
-
   if (context.variant === Variant.CONCURRENT) {
+    // Source 3 Concurrent doesn't currently support imports
+    // hoistImportDeclarations(program)
     return runConcurrent(code, program, context, theOptions)
   }
 
   if (theOptions.useSubst) {
+    hoistImportDeclarations(program)
     return runSubstitution(program, context, theOptions)
   }
 

@@ -8,7 +8,21 @@ type Evaler = (code: string, context: Context) => any
   minified, as the transpiler uses NATIVE_STORAGE_ID for access
  */
 
-export const sandboxedEval: Evaler = new Function(
+// export function getSandboxEvaler(contextParamId: string) {
+//   return new Function(
+//     'code',
+//     contextParamId,
+//     `
+//     ({ ${NATIVE_STORAGE_ID}, ...${contextParamId} } = ${contextParamId});
+//     if (${NATIVE_STORAGE_ID}.evaller === null) {
+//       return eval(code);
+//     } else {
+//       return ${NATIVE_STORAGE_ID}.evaller(code);
+//     }
+//   `) as Evaler
+// }
+
+export const sandboxedEval = new Function(
   'code',
   'ctx',
   `
@@ -18,5 +32,4 @@ export const sandboxedEval: Evaler = new Function(
   } else {
     return ${NATIVE_STORAGE_ID}.evaller(code);
   }
-`
-) as Evaler
+`) as Evaler

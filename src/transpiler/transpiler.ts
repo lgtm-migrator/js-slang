@@ -1,12 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { generate } from 'astring'
 import * as es from 'estree'
-import { partition } from 'lodash'
 import { RawSourceMap, SourceMapGenerator } from 'source-map'
 
 import { NATIVE_STORAGE_ID } from '../constants'
 import { UndefinedVariable } from '../errors/errors'
-import { memoizedGetModuleFile } from '../modules/moduleLoader'
+import { ModuleNotFoundError } from '../errors/moduleErrors'
+import {
+  loadModuleTabs,
+  memoizedGetModuleFile,
+  memoizedGetModuleManifest
+} from '../modules/moduleLoader'
 import { AllowedDeclarations, Chapter, Context, NativeStorage, Variant } from '../types'
 import * as create from '../utils/astCreator'
 import {
@@ -37,58 +41,131 @@ const globalIdNames = [
 
 export type NativeIds = Record<typeof globalIdNames[number], es.Identifier>
 
-export function transformImportDeclarations(
+export function processImportDeclarations(
   program: es.Program,
   usedIdentifiers: Set<string>,
+  context: Context,
+  loadTabs: boolean,
   useThis: boolean = false
-): [string, es.VariableDeclaration[], es.Program['body']] {
+) {
   const prefix: string[] = []
-  const [importNodes, otherNodes] = partition(
-    program.body,
-    node => node.type === 'ImportDeclaration'
-  )
-  const moduleNames = new Map<string, string>()
-  let moduleCount = 0
 
-  const declNodes = (importNodes as es.ImportDeclaration[]).flatMap(node => {
-    const moduleName = node.source.value as string
+  const specs: {
+    [name: string]: {
+      ImportSpecifier: es.ImportSpecifier[]
+      ImportDefaultSpecifier: es.ImportDefaultSpecifier[]
+      ImportNamespaceSpecifier: es.ImportNamespaceSpecifier[]
+    }
+  } = {}
 
-    let moduleNamespace: string
-    if (!moduleNames.has(moduleName)) {
-      // Increment module count until we reach an unused identifier
-      let namespaced = `__MODULE_${moduleCount}__`
-      while (usedIdentifiers.has(namespaced)) {
-        namespaced = `__MODULE_${moduleCount}__`
-        moduleCount++
+  const moduleManifest = Object.keys(memoizedGetModuleManifest())
+
+  // Filter out and collate import specifiers from import declarations
+  const otherNodes = program.body.reduce((res, node) => {
+    if (node.type === 'ImportDeclaration') {
+      const moduleName = node.source.value as string
+
+      if (!(moduleName in specs)) {
+        // Check if the module exists
+        if (!moduleManifest.includes(moduleName)) throw new ModuleNotFoundError(moduleName, node)
+
+        if (context.moduleContexts[moduleName]) {
+          if (context.moduleContexts[moduleName].tabs === null && loadTabs) {
+            context.moduleContexts[moduleName].tabs = loadModuleTabs(moduleName, node)
+          }
+        } else {
+          context.moduleContexts[moduleName] = {
+            state: null,
+            tabs: loadTabs ? loadModuleTabs(moduleName, node) : null
+          }
+        }
+
+        specs[moduleName] = {
+          ImportSpecifier: [],
+          ImportDefaultSpecifier: [],
+          ImportNamespaceSpecifier: []
+        }
+      }
+      node.specifiers.forEach(spec => {
+        usedIdentifiers.add(spec.local.name)
+        specs[moduleName][spec.type].push(spec as any)
+      })
+    } else res.push(node)
+    return res
+  }, [] as es.Program['body'])
+
+  // // Make sure that the context parameter doesn't conflict with imported identifiers
+  // let contextCount = 0
+  // let contextId = `__CONTEXT_${contextCount}__`
+  // while (usedIdentifiers.has(contextId)) {
+  //   contextCount++
+  //   contextId = `__CONTEXT_${contextCount}__`
+  // }
+
+  // Convert import declarations to variable declarations
+  let moduleCounter = 0
+  const declNodes = Object.entries(specs).flatMap(
+    ([
+      moduleName,
+      {
+        ImportSpecifier: regularSpecs,
+        ImportDefaultSpecifier: defaultSpecs,
+        ImportNamespaceSpecifier: namespaceSpecs
+      }
+    ]) => {
+      // If there is a namespace import, use that as the module's namespaced name
+      let namespaced: string, namespaceNodes: es.VariableDeclaration[]
+      if (namespaceSpecs.length > 0) {
+        const [spec0, ...otherSpecs] = namespaceSpecs
+        namespaced = spec0.local.name
+        namespaceNodes = otherSpecs.map(spec =>
+          create.constantDeclaration(spec.local.name, create.identifier(namespaced))
+        )
+      } else {
+        // Otherwise generate a new namespace name that doesn't conflict
+        namespaceNodes = []
+        namespaced = `__MODULE_${moduleCounter}__`
+        while (usedIdentifiers.has(namespaced)) {
+          moduleCounter++
+          namespaced = `__MODULE_${moduleCounter}__`
+        }
+        moduleCounter++
       }
 
-      // The module hasn't been added to the prefix yet, so do that
-      moduleNames.set(moduleName, namespaced)
-      moduleCount++
       const moduleText = memoizedGetModuleFile(moduleName, 'bundle').trim()
       prefix.push(`const ${namespaced} = ${moduleText}({ context: ctx });\n`)
-      moduleNamespace = namespaced
-    } else {
-      moduleNamespace = moduleNames.get(moduleName)!
-    }
 
-    return node.specifiers.map(specifier => {
-      if (specifier.type !== 'ImportSpecifier') {
-        throw new Error(`Expected import specifier, found: ${node.type}`)
-      }
+      // Turn the specifiers into
+      // const name = __MODULE_0__['default']
+      const defaultNodes = defaultSpecs.map(spec =>
+        create.constantDeclaration(spec.local.name, {
+          type: 'MemberExpression',
+          computed: true,
+          optional: false,
+          object: create.identifier(`${useThis ? 'this.' : ''}${namespaced}`),
+          property: create.literal('default')
+        } as es.MemberExpression)
+      )
 
-      // Convert each import specifier to its corresponding local variable declaration
-      return create.constantDeclaration(
-        specifier.local.name,
-        create.memberExpression(
-          create.identifier(`${useThis ? 'this.' : ''}${moduleNamespace}`),
-          specifier.imported.name
+      const regularNodes = regularSpecs.map(spec =>
+        create.constantDeclaration(
+          spec.local.name,
+          create.memberExpression(
+            create.identifier(`${useThis ? 'this.' : ''}${namespaced}`),
+            spec.imported.name
+          )
         )
       )
-    })
-  })
 
-  return [prefix.join(''), declNodes, otherNodes]
+      return [...namespaceNodes, ...defaultNodes, ...regularNodes]
+    }
+  )
+
+  return {
+    prefix: prefix.join(''),
+    importNodes: declNodes,
+    otherNodes,
+  }
 }
 
 /**
@@ -128,21 +205,6 @@ export function hoistImportDeclarations(program: es.Program) {
 
   program.body = newImports.concat(program.body.filter(node => node.type !== 'ImportDeclaration'))
 }
-
-// `useThis` is a temporary indicator used by fullJS
-// export function transformImportDeclarations(program: es.Program, useThis = false) {
-//   const imports = []
-//   let result: es.VariableDeclaration[] = []
-//   let moduleCounter = 0
-//   while (program.body.length > 0 && program.body[0].type === 'ImportDeclaration') {
-//     imports.push(program.body.shift() as es.ImportDeclaration)
-//   }
-//   for (const node of imports) {
-//     result = transformSingleImportDeclaration(moduleCounter, node, useThis).concat(result)
-//     moduleCounter++
-//   }
-//   program.body = (result as (es.Statement | es.ModuleDeclaration)[]).concat(program.body)
-// }
 
 export function getGloballyDeclaredIdentifiers(program: es.Program): string[] {
   return program.body
@@ -598,7 +660,10 @@ function getDeclarationsToAccessTranspilerInternals(
   })
 }
 
-export type TranspiledResult = { transpiled: string; sourceMapJson?: RawSourceMap }
+export type TranspiledResult = {
+  transpiled: string
+  sourceMapJson?: RawSourceMap
+}
 
 function transpileToSource(
   program: es.Program,
@@ -627,10 +692,11 @@ function transpileToSource(
   wrapArrowFunctionsToAllowNormalCallsAndNiceToString(program, functionsToStringMap, globalIds)
   addInfiniteLoopProtection(program, globalIds, usedIdentifiers)
 
-  const [modulePrefix, importNodes, otherNodes] = transformImportDeclarations(
-    program,
-    usedIdentifiers
-  )
+  const {
+    prefix: modulePrefix,
+    importNodes,
+    otherNodes,
+  } = processImportDeclarations(program, usedIdentifiers, context, true)
   program.body = (importNodes as es.Program['body']).concat(otherNodes)
 
   getGloballyDeclaredIdentifiers(program).forEach(id =>
@@ -655,13 +721,14 @@ function transpileToSource(
   return { transpiled, sourceMapJson }
 }
 
-function transpileToFullJS(program: es.Program): TranspiledResult {
+function transpileToFullJS(program: es.Program, context: Context): TranspiledResult {
   const usedIdentifiers = new Set<string>(getIdentifiersInProgram(program))
 
-  const [modulePrefix, importNodes, otherNodes] = transformImportDeclarations(
-    program,
-    usedIdentifiers
-  )
+  const {
+    prefix: modulePrefix,
+    importNodes,
+    otherNodes,
+  } = processImportDeclarations(program, usedIdentifiers, context, true)
 
   const transpiledProgram: es.Program = create.program([
     evallerReplacer(create.identifier(NATIVE_STORAGE_ID), new Set()),
@@ -683,7 +750,7 @@ export function transpile(
   skipUndefined = false
 ): TranspiledResult {
   if (context.chapter === Chapter.FULL_JS || context.variant == Variant.NATIVE) {
-    return transpileToFullJS(program)
+    return transpileToFullJS(program, context)
   }
 
   return transpileToSource(program, context, skipUndefined)
