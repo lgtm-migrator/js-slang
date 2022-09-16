@@ -741,10 +741,7 @@ export function* evalProgram(program: es.Program, context: Context, loadTabs: bo
   context.numberOfOuterEnvironments += 1
   const environment = createBlockEnvironment(context, 'programEnvironment')
   pushEnvironment(context, environment)
-  const result = yield* forceIt(
-    yield* evaluateBlockStatement(context, blockStatement),
-    context
-  )
+  const result = yield* forceIt(yield* evaluateBlockStatement(context, blockStatement), context)
   yield* leave(context) // Done visiting program
 
   if (result instanceof Closure) {
