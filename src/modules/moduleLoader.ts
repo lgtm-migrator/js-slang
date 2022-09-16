@@ -98,6 +98,7 @@ export function loadModuleBundle(path: string, context: Context, node?: es.Node)
  */
 export function loadModuleTabs(path: string, node?: es.Node) {
   const modules = memoizedGetModuleManifest()
+
   // Check if the module exists
   const moduleList = Object.keys(modules)
   if (moduleList.includes(path) === false) throw new ModuleNotFoundError(path, node)
