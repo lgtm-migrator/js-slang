@@ -733,13 +733,16 @@ export function* evalProgram(program: es.Program, context: Context, loadTabs: bo
     }
   }
 
-  program.body = otherNodes
+  const blockStatement = {
+    type: 'BlockStatement',
+    body: otherNodes
+  } as es.BlockStatement
 
   context.numberOfOuterEnvironments += 1
   const environment = createBlockEnvironment(context, 'programEnvironment')
   pushEnvironment(context, environment)
   const result = yield* forceIt(
-    yield* evaluateBlockStatement(context, program as unknown as es.BlockStatement),
+    yield* evaluateBlockStatement(context, blockStatement),
     context
   )
   yield* leave(context) // Done visiting program

@@ -175,7 +175,8 @@ export function processImportDeclarations(
  * a single statement
  */
 export function hoistImportDeclarations(program: es.Program) {
-  const [importNodes, otherNodes] = partition(program.body, 
+  const [importNodes, otherNodes] = partition(
+    program.body,
     node => node.type === 'ImportDeclaration'
   )
   const specifiers = new Map<
@@ -204,7 +205,7 @@ export function hoistImportDeclarations(program: es.Program) {
     }
   }) as (es.ModuleDeclaration | es.Statement | es.Declaration)[]
 
-  program.body = newImports.concat(otherNodes);
+  program.body = newImports.concat(otherNodes)
 }
 
 export function getGloballyDeclaredIdentifiers(program: es.Program): string[] {
