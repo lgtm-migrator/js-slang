@@ -13,7 +13,7 @@ jest.mock('../../modules/moduleLoader', () => ({
     another_module: {}
   })
 }))
-import { processImportDeclarations, transpile } from '../transpiler'
+import { processImportDeclarations } from '../transpiler'
 
 test('Transform import declarations into variable declarations', () => {
   const code = stripIndent`
