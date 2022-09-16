@@ -96,7 +96,7 @@ export async function fullJSRunner(
   let transpiled, sourceMapJson
   try {
     ;({ transpiled, sourceMapJson } = transpile(program, context))
-    console.log(transpiled)
+    // console.log(transpiled)
   } catch (error) {
     context.errors.push(error instanceof RuntimeSourceError ? error : await toSourceError(error))
     return resolvedErrorPromise
