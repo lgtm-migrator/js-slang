@@ -27,11 +27,11 @@ import { compileToIns } from './vm/svml-compiler'
 export { SourceDocumentation } from './editors/ace/docTooltip'
 import * as es from 'estree'
 
+import { loadModuleTab } from './modules/moduleLoader'
 import { getKeywords, getProgramNames, NameDeclaration } from './name-extractor'
 import { fullJSRunner, hasVerboseErrors, sourceRunner } from './runner'
 import { typeCheck } from './typeChecker/typeChecker'
 import { typeToString } from './utils/stringify'
-import { loadModuleTab } from './modules/moduleLoader'
 
 export interface IOptions {
   scheduler: 'preemptive' | 'async'
