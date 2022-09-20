@@ -62,30 +62,6 @@ export function determineExecutionMethod(
   return isNativeRunnable
 }
 
-// /**
-//  * Add UI tabs needed for modules to program context
-//  *
-//  * @param program AST of program to be ran
-//  * @param context The context of the program
-//  */
-// export function appendModulesToContext(program: Program, context: Context): void {
-//   for (const node of program.body) {
-//     if (node.type !== 'ImportDeclaration') break
-//     const moduleName = (node.source.value as string).trim()
-
-//     // Load the module's tabs
-//     if (!context.moduleContexmodulesInfos(moduleName)) {
-//       constmodulesInfo = {
-//         state: null,
-//         tabs: loadModuleTabs(moduleName)
-//       }
-//       context.modulemodulesInfooduleName, moduleContext)
-//     } else modulesInfo
-//       context.moduleContexts.get(moduleName)!.tabs = loadModuleTabs(moduleName)
-//     }
-//   }
-// }
-
 // AST Utils
 
 export function hasVerboseErrors(theCode: string): boolean {

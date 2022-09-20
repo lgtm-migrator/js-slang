@@ -31,6 +31,7 @@ import { getKeywords, getProgramNames, NameDeclaration } from './name-extractor'
 import { fullJSRunner, hasVerboseErrors, sourceRunner } from './runner'
 import { typeCheck } from './typeChecker/typeChecker'
 import { typeToString } from './utils/stringify'
+import { loadModuleTab } from './modules/moduleLoader'
 
 export interface IOptions {
   scheduler: 'preemptive' | 'async'
@@ -325,4 +326,4 @@ export function compile(
   }
 }
 
-export { createContext, Context, ModulesInfo, Result, setBreakpointAtLine, assemble }
+export { createContext, loadModuleTab, Context, ModulesInfo, Result, setBreakpointAtLine, assemble }

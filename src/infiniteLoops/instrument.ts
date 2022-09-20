@@ -1,7 +1,6 @@
 import { generate } from 'astring'
 import * as es from 'estree'
 
-import { Context } from '..'
 import { processImportDeclarations } from '../transpiler/transpiler'
 import * as create from '../utils/astCreator'
 import { recursive, simple, WalkerCallback } from '../utils/walkers'
@@ -562,14 +561,14 @@ function trackLocations(program: es.Program) {
   })
 }
 
-function handleImports(programs: es.Program[], context: Context): [string, string[]] {
+function handleImports(programs: es.Program[]): [string, string[]] {
   const [prefixes, imports] = programs.reduce(
     ([prefix, moduleNames], program) => {
       const {
         prefix: prefixToAdd,
         importNodes: importsToAdd,
         otherNodes
-      } = processImportDeclarations(program, new Set<string>(), context, false)
+      } = processImportDeclarations(program, new Set<string>())
       program.body = (importsToAdd as es.Program['body']).concat(otherNodes)
       prefix.push(prefixToAdd)
 
@@ -597,8 +596,7 @@ function handleImports(programs: es.Program[], context: Context): [string, strin
 function instrument(
   previous: es.Program[],
   program: es.Program,
-  builtins: Iterable<string>,
-  context: Context
+  builtins: Iterable<string>
 ): string {
   const { builtinsId, functionsId, stateId } = globalIds
   const predefined = {}
@@ -607,7 +605,7 @@ function instrument(
   predefined[stateId] = stateId
   const innerProgram = { ...program }
 
-  const [prefix, moduleNames] = handleImports([program].concat(previous), context)
+  const [prefix, moduleNames] = handleImports([program].concat(previous))
   for (const name of moduleNames) {
     predefined[name] = name
   }

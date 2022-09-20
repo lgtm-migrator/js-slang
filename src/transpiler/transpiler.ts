@@ -7,11 +7,7 @@ import { RawSourceMap, SourceMapGenerator } from 'source-map'
 import { NATIVE_STORAGE_ID } from '../constants'
 import { UndefinedVariable } from '../errors/errors'
 import { ModuleNotFoundError } from '../errors/moduleErrors'
-import {
-  loadModuleTabs,
-  memoizedGetModuleFile,
-  memoizedGetModuleManifest
-} from '../modules/moduleLoader'
+import { memoizedGetModuleFile, memoizedGetModuleManifest } from '../modules/moduleLoader'
 import { AllowedDeclarations, Chapter, Context, NativeStorage, Variant } from '../types'
 import * as create from '../utils/astCreator'
 import {
@@ -45,8 +41,6 @@ export type NativeIds = Record<typeof globalIdNames[number], es.Identifier>
 export function processImportDeclarations(
   program: es.Program,
   usedIdentifiers: Set<string>,
-  context: Context,
-  loadTabs: boolean,
   useThis: boolean = false
 ) {
   const prefix: string[] = []
@@ -70,17 +64,6 @@ export function processImportDeclarations(
         // Check if the module exists
         if (!moduleManifest.includes(moduleName)) throw new ModuleNotFoundError(moduleName, node)
 
-        if (context.moduleContexts[moduleName]) {
-          if (context.moduleContexts[moduleName].tabs === null && loadTabs) {
-            context.moduleContexts[moduleName].tabs = loadModuleTabs(moduleName, node)
-          }
-        } else {
-          context.moduleContexts[moduleName] = {
-            state: null,
-            tabs: loadTabs ? loadModuleTabs(moduleName, node) : null
-          }
-        }
-
         specs[moduleName] = {
           ImportSpecifier: [],
           ImportDefaultSpecifier: [],
@@ -94,14 +77,6 @@ export function processImportDeclarations(
     } else res.push(node)
     return res
   }, [] as es.Program['body'])
-
-  // // Make sure that the context parameter doesn't conflict with imported identifiers
-  // let contextCount = 0
-  // let contextId = `__CONTEXT_${contextCount}__`
-  // while (usedIdentifiers.has(contextId)) {
-  //   contextCount++
-  //   contextId = `__CONTEXT_${contextCount}__`
-  // }
 
   // Convert import declarations to variable declarations
   let moduleCounter = 0
@@ -698,7 +673,7 @@ function transpileToSource(
     prefix: modulePrefix,
     importNodes,
     otherNodes
-  } = processImportDeclarations(program, usedIdentifiers, context, true)
+  } = processImportDeclarations(program, usedIdentifiers)
   program.body = (importNodes as es.Program['body']).concat(otherNodes)
 
   getGloballyDeclaredIdentifiers(program).forEach(id =>
@@ -730,7 +705,7 @@ function transpileToFullJS(program: es.Program, context: Context): TranspiledRes
     prefix: modulePrefix,
     importNodes,
     otherNodes
-  } = processImportDeclarations(program, usedIdentifiers, context, true)
+  } = processImportDeclarations(program, usedIdentifiers)
 
   const transpiledProgram: es.Program = create.program([
     evallerReplacer(create.identifier(NATIVE_STORAGE_ID), new Set()),

@@ -118,10 +118,9 @@ export class ModulesInfo {
   }
 
   constructor() {
-    this.contexts = {};
+    this.contexts = {}
     this.spawnedTabs = new Set<string>()
   }
-
 
   public get moduleTabs() {
     return Array.from(this.spawnedTabs.values())

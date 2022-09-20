@@ -8,7 +8,7 @@ import {
   ModuleNotFoundError
 } from '../errors/moduleErrors'
 import { Context } from '../types'
-import { ModuleBundle, ModuleFunctions, Modules } from './moduleTypes'
+import { ModuleBundle, ModuleFunctions, Modules, ModuleTab } from './moduleTypes'
 
 // Supports both JSDom (Web Browser) environment and Node environment
 export const newHttpRequest = () =>
@@ -96,25 +96,19 @@ export function loadModuleBundle(path: string, context: Context, node?: es.Node)
  * @param node import declaration node
  * @returns an array of functions
  */
-export function loadModuleTabs(path: string, node?: es.Node) {
+export function loadModuleTab(path: string, node?: es.Node): ModuleTab {
   const modules = memoizedGetModuleManifest()
 
-  // Check if the module exists
-  const moduleList = Object.keys(modules)
-  if (moduleList.includes(path) === false) throw new ModuleNotFoundError(path, node)
+  // Check if the tab exists
+  const tabList = Object.values(modules).flatMap(x => x.tabs)
+  if (!tabList.includes(path)) throw new ModuleInternalError(path, node)
 
-  // Retrieves the tabs the module has from modules.json
-  const sideContentTabPaths: string[] = modules[path].tabs
-  // Load the tabs for the current module
-  return sideContentTabPaths.map(path => {
-    const rawTabFile = memoizedGetModuleFile(path, 'tab')
-    try {
-      return eval(rawTabFile)
-    } catch (error) {
-      // console.error('tab error:', error);
-      throw new ModuleInternalError(path, node)
-    }
-  })
+  const rawTabFile = memoizedGetModuleFile(path, 'tab')
+  try {
+    return eval(rawTabFile) as ModuleTab
+  } catch (error) {
+    throw new ModuleInternalError(path, node)
+  }
 }
 
 type Documentation = {

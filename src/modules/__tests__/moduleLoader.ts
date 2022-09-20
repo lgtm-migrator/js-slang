@@ -122,60 +122,38 @@ describe('Testing modules/moduleLoader.ts in a jsdom environment', () => {
     ).toThrow(ModuleInternalError)
   })
 
-  test('Loading module tabs correctly', () => {
-    const validModule = 'valid_module'
-    const sampleResponse = `{ "${validModule}": { "tabs": ["Tab1", "Tab2"] } }`
+  test('Loads a single tab correctly', () => {
+    const validTab = 'Tab1'
+    const sampleResponse = `{ "test_module": { "tabs": ["${validTab}", "Tab2"] } }`
     const mockedXMLHttpRequest1 = mockXMLHttpRequest({ responseText: sampleResponse })
     const mockedXMLHttpRequest2 = mockXMLHttpRequest({
-      responseText: '(function (React) {});'
+      responseText: '(function (React) {})'
     })
-    const mockedXMLHttpRequest3 = mockXMLHttpRequest({
-      responseText: '(function (React) {});'
-    })
-    const sideContentTabs = moduleLoader.loadModuleTabs(validModule)
+
+    const sideContentTab = moduleLoader.loadModuleTab(validTab)
     const correctUrl1 = moduleLoader.MODULES_STATIC_URL + `/modules.json`
     expect(mockedXMLHttpRequest1.open).toHaveBeenCalledTimes(1)
     expect(mockedXMLHttpRequest1.open).toHaveBeenCalledWith('GET', correctUrl1, false)
     expect(mockedXMLHttpRequest1.send).toHaveBeenCalledTimes(1)
     expect(mockedXMLHttpRequest1.send).toHaveBeenCalledWith(null)
+
     const correctUrl2 = moduleLoader.MODULES_STATIC_URL + `/tabs/Tab1.js`
     expect(mockedXMLHttpRequest2.open).toHaveBeenCalledTimes(1)
     expect(mockedXMLHttpRequest2.open).toHaveBeenCalledWith('GET', correctUrl2, false)
     expect(mockedXMLHttpRequest2.send).toHaveBeenCalledTimes(1)
     expect(mockedXMLHttpRequest2.send).toHaveBeenCalledWith(null)
-    const correctUrl3 = moduleLoader.MODULES_STATIC_URL + `/tabs/Tab2.js`
-    expect(mockedXMLHttpRequest3.open).toHaveBeenCalledTimes(1)
-    expect(mockedXMLHttpRequest3.open).toHaveBeenCalledWith('GET', correctUrl3, false)
-    expect(mockedXMLHttpRequest3.send).toHaveBeenCalledTimes(1)
-    expect(mockedXMLHttpRequest3.send).toHaveBeenCalledWith(null)
-    expect(sideContentTabs.length).toBe(2)
+    expect(sideContentTab.length).toBe(1)
   })
 
-  test('Loading wrongly implemented module tabs correctly throws ModuleInternalError', () => {
-    const validModule = 'valid_module'
-    const sampleResponse = `{ "${validModule}": { "tabs": ["Tab1", "Tab2"] } }`
+  test('Loading unknown tab correctly throws ModuleInternalError', () => {
+    const sampleResponse = '{ "test_module": { "tabs": ["Tab1", "Tab2"] }}'
     const mockedXMLHttpRequest1 = mockXMLHttpRequest({ responseText: sampleResponse })
-    const mockedXMLHttpRequest2 = mockXMLHttpRequest({
-      responseText: '(function (React) {});'
-    })
-    const mockedXMLHttpRequest3 = mockXMLHttpRequest({
-      responseText: '(function (React) {}))'
-    })
-    expect(() => moduleLoader.loadModuleTabs(validModule)).toThrow(ModuleInternalError)
+
+    expect(() => moduleLoader.loadModuleTab('Tab3')).toThrow(ModuleInternalError)
     const correctUrl1 = moduleLoader.MODULES_STATIC_URL + `/modules.json`
     expect(mockedXMLHttpRequest1.open).toHaveBeenCalledTimes(1)
     expect(mockedXMLHttpRequest1.open).toHaveBeenCalledWith('GET', correctUrl1, false)
     expect(mockedXMLHttpRequest1.send).toHaveBeenCalledTimes(1)
     expect(mockedXMLHttpRequest1.send).toHaveBeenCalledWith(null)
-    const correctUrl2 = moduleLoader.MODULES_STATIC_URL + `/tabs/Tab1.js`
-    expect(mockedXMLHttpRequest2.open).toHaveBeenCalledTimes(1)
-    expect(mockedXMLHttpRequest2.open).toHaveBeenCalledWith('GET', correctUrl2, false)
-    expect(mockedXMLHttpRequest2.send).toHaveBeenCalledTimes(1)
-    expect(mockedXMLHttpRequest2.send).toHaveBeenCalledWith(null)
-    const correctUrl3 = moduleLoader.MODULES_STATIC_URL + `/tabs/Tab2.js`
-    expect(mockedXMLHttpRequest3.open).toHaveBeenCalledTimes(1)
-    expect(mockedXMLHttpRequest3.open).toHaveBeenCalledWith('GET', correctUrl3, false)
-    expect(mockedXMLHttpRequest3.send).toHaveBeenCalledTimes(1)
-    expect(mockedXMLHttpRequest3.send).toHaveBeenCalledWith(null)
   })
 })

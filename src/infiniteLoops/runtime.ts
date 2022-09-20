@@ -318,7 +318,7 @@ export function testForInfiniteLoop(code: string, previousCodeStack: string[]) {
   const newBuiltins = prepareBuiltins(context.nativeStorage.builtins)
   const { builtinsId, functionsId, stateId } = InfiniteLoopRuntimeObjectNames
 
-  const instrumentedCode = instrument(previous, program, newBuiltins.keys(), context)
+  const instrumentedCode = instrument(previous, program, newBuiltins.keys())
   const state = new st.State()
 
   const sandboxedRun = new Function(
