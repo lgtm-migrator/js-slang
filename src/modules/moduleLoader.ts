@@ -58,7 +58,10 @@ const memoizedGetModuleFileInternal = memoize(getModuleFile)
 export const memoizedGetModuleFile = (name: string, type: 'tab' | 'bundle' | 'json') =>
   memoizedGetModuleFileInternal({ name, type })
 function getModuleFile({ name, type }: { name: string; type: 'tab' | 'bundle' | 'json' }): string {
-  return httpGet(`${MODULES_STATIC_URL}/${type}s/${name}.js${type === 'json' ? 'on' : ''}`)
+  if (type === 'json') {
+    return httpGet(`${MODULES_STATIC_URL}/jsons/${name}.json`)
+  }
+  return httpGet(`${MODULES_STATIC_URL}/${type}s/${name}.js`)
 }
 
 /**
@@ -79,8 +82,7 @@ export function loadModuleBundle(path: string, context: Context, node?: es.Node)
   const moduleText = memoizedGetModuleFile(path, 'bundle')
   try {
     const moduleBundle: ModuleBundle = eval(moduleText)
-    const result = moduleBundle(context.moduleParams, context.moduleContexts)
-    return result
+    return moduleBundle({ context })
   } catch (error) {
     // console.error("bundle error: ", error)
     throw new ModuleInternalError(path, node)
@@ -96,6 +98,7 @@ export function loadModuleBundle(path: string, context: Context, node?: es.Node)
  */
 export function loadModuleTabs(path: string, node?: es.Node) {
   const modules = memoizedGetModuleManifest()
+
   // Check if the module exists
   const moduleList = Object.keys(modules)
   if (moduleList.includes(path) === false) throw new ModuleNotFoundError(path, node)

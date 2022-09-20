@@ -2,6 +2,7 @@ import { Program } from 'estree'
 
 import { mockContext } from '../../mocks/context'
 import { parse } from '../../parser/parser'
+import { Chapter } from '../../types'
 import { evaluateBinaryExpression, evaluateUnaryExpression } from '../../utils/operators'
 import {
   InfiniteLoopRuntimeFunctions as functionNames,
@@ -40,7 +41,7 @@ function runWithMock(main: string, codeHistory?: string[], builtins: Map<string,
   let output = undefined
   builtins.set('output', (x: any) => (output = x))
   builtins.set('undefined', undefined)
-  const context = mockContext(4)
+  const context = mockContext(Chapter.SOURCE_4)
   const program = parse(main, context)
   expect(program).not.toBeUndefined()
   let previous: Program[] = []
@@ -52,7 +53,7 @@ function runWithMock(main: string, codeHistory?: string[], builtins: Map<string,
     previous = restOfCode as Program[]
   }
   const [mockFunctions, mockState] = mockFunctionsAndState()
-  const instrumentedCode = instrument(previous, program as Program, builtins.keys())
+  const instrumentedCode = instrument(previous, program as Program, builtins.keys(), context)
   const { builtinsId, functionsId, stateId } = InfiniteLoopRuntimeObjectNames
   const sandboxedRun = new Function('code', functionsId, stateId, builtinsId, `return eval(code)`)
   sandboxedRun(instrumentedCode, mockFunctions, mockState, builtins)

@@ -1,4 +1,4 @@
-import type { ModuleContexts } from '../types'
+import type { Context } from '../types'
 
 export type Modules = {
   [module: string]: {
@@ -6,7 +6,7 @@ export type Modules = {
   }
 }
 
-export type ModuleBundle = (params: any, context: ModuleContexts) => ModuleFunctions
+export type ModuleBundle = (context: { context: Context }) => ModuleFunctions
 
 export type ModuleFunctions = {
   [functionName: string]: Function

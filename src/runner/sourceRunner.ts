@@ -9,7 +9,7 @@ import { TimeoutError } from '../errors/timeoutErrors'
 import { transpileToGPU } from '../gpu/gpu'
 import { isPotentialInfiniteLoop } from '../infiniteLoops/errors'
 import { testForInfiniteLoop } from '../infiniteLoops/runtime'
-import { evaluate } from '../interpreter/interpreter'
+import { evalProgram } from '../interpreter/interpreter'
 import { nonDetEvaluate } from '../interpreter/interpreter-non-det'
 import { transpileToLazy } from '../lazy/lazy'
 import { parse } from '../parser/parser'
@@ -23,7 +23,7 @@ import {
 } from '../stepper/stepper'
 import { sandboxedEval } from '../transpiler/evalContainer'
 import { hoistImportDeclarations, transpile } from '../transpiler/transpiler'
-import { Context, Scheduler, SourceError } from '../types'
+import { Context, Scheduler, SourceError, Variant } from '../types'
 import { forceIt } from '../utils/operators'
 import { validateAndAnnotate } from '../validator/validator'
 import { compileForConcurrent } from '../vm/svml-compiler'
@@ -38,7 +38,7 @@ const DEFAULT_SOURCE_OPTIONS: IOptions = {
   steps: 1000,
   stepLimit: 1000,
   executionMethod: 'auto',
-  variant: 'default',
+  variant: Variant.DEFAULT,
   originalMaxExecTime: 1000,
   useSubst: false,
   isPrelude: false,
@@ -102,10 +102,9 @@ function runSubstitution(
 }
 
 function runInterpreter(program: es.Program, context: Context, options: IOptions): Promise<Result> {
-  console.log('running using interpreter')
-  let it = evaluate(program, context)
+  let it = evalProgram(program, context)
   let scheduler: Scheduler
-  if (context.variant === 'non-det') {
+  if (context.variant === Variant.NON_DET) {
     it = nonDetEvaluate(program, context)
     scheduler = new NonDetScheduler()
   } else if (options.scheduler === 'async') {
@@ -136,25 +135,20 @@ async function runNative(
   let transpiled
   let sourceMapJson: RawSourceMap | undefined
   try {
-    // appendModulesToContext(program, context)
     switch (context.variant) {
-      case 'gpu':
+      case Variant.GPU:
         transpileToGPU(program)
         break
-      case 'lazy':
+      case Variant.LAZY:
         transpileToLazy(program)
         break
     }
 
     ;({ transpiled, sourceMapJson } = transpile(program, context))
-    let value = await sandboxedEval(
-      transpiled,
-      context.nativeStorage,
-      options,
-      context.moduleContexts
-    )
+    // console.log(transpiled)
+    let value = await sandboxedEval(transpiled, context)
 
-    if (context.variant === 'lazy') {
+    if (context.variant === Variant.LAZY) {
       value = forceIt(value)
     }
 
@@ -168,7 +162,7 @@ async function runNative(
       value
     })
   } catch (error) {
-    const isDefaultVariant = options.variant === undefined || options.variant === 'default'
+    const isDefaultVariant = options.variant === undefined || options.variant === Variant.DEFAULT
     if (isDefaultVariant && isPotentialInfiniteLoop(error)) {
       const detectedInfiniteLoop = testForInfiniteLoop(code, context.previousCode.slice(1))
       if (detectedInfiniteLoop !== undefined) {
@@ -229,13 +223,14 @@ export async function sourceRunner(
     return resolvedErrorPromise
   }
 
-  hoistImportDeclarations(program)
-
-  if (context.variant === 'concurrent') {
+  if (context.variant === Variant.CONCURRENT) {
+    // Source 3 Concurrent doesn't currently support imports
+    // hoistImportDeclarations(program)
     return runConcurrent(code, program, context, theOptions)
   }
 
   if (theOptions.useSubst) {
+    hoistImportDeclarations(program)
     return runSubstitution(program, context, theOptions)
   }
 
@@ -246,7 +241,7 @@ export async function sourceRunner(
     verboseErrors
   )
 
-  if (isNativeRunnable && context.variant === 'native') {
+  if (isNativeRunnable && context.variant === Variant.NATIVE) {
     return await fullJSRunner(code, context, theOptions)
   }
 

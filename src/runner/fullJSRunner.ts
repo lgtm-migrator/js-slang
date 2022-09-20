@@ -7,16 +7,9 @@ import { IOptions, Result } from '..'
 import { NATIVE_STORAGE_ID } from '../constants'
 import { RuntimeSourceError } from '../errors/runtimeSourceError'
 import { FatalSyntaxError } from '../parser/parser'
-import {
-  evallerReplacer,
-  getBuiltins,
-  hoistImportDeclarations,
-  prefixModule,
-  transpile
-} from '../transpiler/transpiler'
-import type { Context, ModuleContexts } from '../types'
+import { evallerReplacer, getBuiltins, transpile } from '../transpiler/transpiler'
+import type { Context } from '../types'
 import * as create from '../utils/astCreator'
-import { NativeStorage } from './../types'
 import { toSourceError } from './errors'
 import { resolvedErrorPromise } from './utils'
 
@@ -52,12 +45,7 @@ function parseFullJS(code: string, context: Context): es.Program | undefined {
   return program
 }
 
-function fullJSEval(
-  code: string,
-  nativeStorage: NativeStorage,
-  moduleParams: any,
-  moduleContexts: ModuleContexts
-): any {
+function fullJSEval(code: string, { nativeStorage, ...ctx }: Context): any {
   if (nativeStorage.evaller) {
     return nativeStorage.evaller(code)
   } else {
@@ -98,29 +86,27 @@ export async function fullJSRunner(
     : [...getBuiltins(context.nativeStorage), ...preparePrelude(context)]
 
   // modules
-  hoistImportDeclarations(program)
-  let modulePrefix: string
+  const preEvalProgram: es.Program = create.program([
+    ...preludeAndBuiltins,
+    evallerReplacer(create.identifier(NATIVE_STORAGE_ID), new Set())
+  ])
+  const preEvalCode: string = generate(preEvalProgram) // + modulePrefix
+  await fullJSEval(preEvalCode, context)
+
+  let transpiled, sourceMapJson
   try {
-    // appendModulesToContext(program, context)
-    modulePrefix = prefixModule(program)
+    ;({ transpiled, sourceMapJson } = transpile(program, context))
+    // console.log(transpiled)
   } catch (error) {
     context.errors.push(error instanceof RuntimeSourceError ? error : await toSourceError(error))
     return resolvedErrorPromise
   }
 
-  const preEvalProgram: es.Program = create.program([
-    ...preludeAndBuiltins,
-    evallerReplacer(create.identifier(NATIVE_STORAGE_ID), new Set())
-  ])
-  const preEvalCode: string = generate(preEvalProgram) + modulePrefix
-  await fullJSEval(preEvalCode, context.nativeStorage, options, context.moduleContexts)
-
-  const { transpiled, sourceMapJson } = transpile(program, context)
   try {
     return Promise.resolve({
       status: 'finished',
       context,
-      value: await fullJSEval(transpiled, context.nativeStorage, options, context.moduleContexts)
+      value: await fullJSEval(transpiled, context)
     })
   } catch (error) {
     context.errors.push(await toSourceError(error, sourceMapJson))

@@ -59,10 +59,28 @@ export interface Comment {
 }
 
 export type ExecutionMethod = 'native' | 'interpreter' | 'auto'
-export type Variant = 'native' | 'wasm' | 'lazy' | 'non-det' | 'concurrent' | 'gpu' | 'default' // this might replace EvaluationMethod
 
-export interface SourceLanguage {
-  chapter: number
+export enum Chapter {
+  SOURCE_1 = 1,
+  SOURCE_2 = 2,
+  SOURCE_3 = 3,
+  SOURCE_4 = 4,
+  FULL_JS = -1,
+  LIBRARY_PARSER = 100
+}
+
+export enum Variant {
+  DEFAULT = 'default',
+  NATIVE = 'native',
+  WASM = 'wasm',
+  LAZY = 'lazy',
+  NON_DET = 'non-det',
+  CONCURRENT = 'concurrent',
+  GPU = 'gpu'
+}
+
+export interface Language {
+  chapter: Chapter
   variant: Variant
 }
 
@@ -93,12 +111,17 @@ export interface NativeStorage {
    */
 }
 
-export class ModuleContexts {
-  constructor(public readonly contexts: Map<string, any> = new Map()) {
+export class ModulesInfo {
+  private readonly spawnedTabs: Set<string>
+  public readonly contexts: {
+    [name: string]: any
+  }
+
+  constructor() {
+    this.contexts = {};
     this.spawnedTabs = new Set<string>()
   }
 
-  private readonly spawnedTabs: Set<string>
 
   public get moduleTabs() {
     return Array.from(this.spawnedTabs.values())
@@ -112,7 +135,7 @@ export class ModuleContexts {
 
 export interface Context<T = any> {
   /** The source version used */
-  chapter: number
+  chapter: Chapter
 
   /** The external symbols that exist in the Context. */
   externalSymbols: string[]
@@ -174,14 +197,9 @@ export interface Context<T = any> {
   typeEnvironment: TypeEnvironment
 
   /**
-   * Parameters to pass to a module during module initialization
-   */
-  moduleParams: any
-
-  /**
    * Storage container for module specific information and state
    */
-  moduleContexts: ModuleContexts
+  modules: ModulesInfo
 
   /**
    * Code previously executed in this context

@@ -9,10 +9,6 @@ import { simple } from '../utils/walkers'
 
 // Context Utils
 
-export function isFullJSChapter(chapter: number): boolean {
-  return chapter == -1
-}
-
 /**
  * Small function to determine the variant to be used
  * by a program, as both context and options can have
@@ -78,13 +74,13 @@ export function determineExecutionMethod(
 //     const moduleName = (node.source.value as string).trim()
 
 //     // Load the module's tabs
-//     if (!context.moduleContexts.contexts.has(moduleName)) {
-//       const moduleContext = {
+//     if (!context.moduleContexmodulesInfos(moduleName)) {
+//       constmodulesInfo = {
 //         state: null,
 //         tabs: loadModuleTabs(moduleName)
 //       }
-//       context.moduleContexts.set(moduleName, moduleContext)
-//     } else {
+//       context.modulemodulesInfooduleName, moduleContext)
+//     } else modulesInfo
 //       context.moduleContexts.get(moduleName)!.tabs = loadModuleTabs(moduleName)
 //     }
 //   }

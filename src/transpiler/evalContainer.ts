@@ -1,24 +1,32 @@
-import { MODULE_CONTEXTS_ID, MODULE_PARAMS_ID, NATIVE_STORAGE_ID } from '../constants'
-import type { ModuleContexts, NativeStorage } from '../types'
+import { NATIVE_STORAGE_ID } from '../constants'
+import type { Context } from '../types'
 
-type Evaler = (
-  code: string,
-  nativeStorage: NativeStorage,
-  moduleParams: any,
-  moduleContexts: ModuleContexts
-) => any
+type Evaler = (code: string, context: Context) => any
 
 /*
   We need to use new Function here to ensure that the parameter names do not get
   minified, as the transpiler uses NATIVE_STORAGE_ID for access
  */
 
-export const sandboxedEval: Evaler = new Function(
+// export function getSandboxEvaler(contextParamId: string) {
+//   return new Function(
+//     'code',
+//     contextParamId,
+//     `
+//     ({ ${NATIVE_STORAGE_ID}, ...${contextParamId} } = ${contextParamId});
+//     if (${NATIVE_STORAGE_ID}.evaller === null) {
+//       return eval(code);
+//     } else {
+//       return ${NATIVE_STORAGE_ID}.evaller(code);
+//     }
+//   `) as Evaler
+// }
+
+export const sandboxedEval = new Function(
   'code',
-  NATIVE_STORAGE_ID,
-  MODULE_PARAMS_ID,
-  MODULE_CONTEXTS_ID,
+  'ctx',
   `
+  ({ ${NATIVE_STORAGE_ID}, ...ctx } = ctx);
   if (${NATIVE_STORAGE_ID}.evaller === null) {
     return eval(code);
   } else {
